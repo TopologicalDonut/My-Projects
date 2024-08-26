@@ -1,0 +1,45 @@
+---
+title: "The Effect of DST on Crime in Vancouver"
+author: "Stephen Min"
+date: "2024-08-20"
+output: html_document
+bibliography: references.bib
+---
+
+# Introduction
+
+This is an analysis inspired by @doleac2015. The premise is that Daylight Saving Time (DST) represents an exogenous increase in ambient light during a typical day, which might lead to a higher chance of criminals being caught, thus potentially lowering crime rates. However, as @doleac2015 point out, it's possible that DST causes people to spend more time outdoors, resulting in more potential victims for criminals. The effect of DST is thus unknown without empirical work.
+
+The original paper found that DST decreased crime rates in the United States, but we cannot easily generalize the results to cities in Canada. This motivates an application of the methodology of @doleac2015 to analyze the effect of DST on crime rates in Vancouver.
+
+```{r setup, include=FALSE}
+knitr::read_chunk("Script.R")
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(patchwork)
+library(kableExtra)
+```
+
+# Empirical Strategy
+
+Since DST is a sudden shift of the clock forward at a specific date each year, it would make sense to use regression discontinuity, with a running variable of the number of days before and after the start of DST.
+
+```{r DataCleaning, include=FALSE}
+```
+
+```{r table}
+data_summary <- data_clean %>%
+  select(date, num_property_crime_perht, num_violent_crime_perht, avg_temperature, rain, days_from_dst, dst_dummy, day_of_week) %>%
+  head(10)  # Show first 10 rows
+
+kable(data_summary, 
+      col.names = c("Date", "Property Crime per 100k", "Violent Crime per 100k", "Average Temperature", "Rain", "Days from DST", "DST Dummy", "Day of Week"),
+      align = c('l', 'c', 'c', 'c', 'c', 'c')) %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# References
