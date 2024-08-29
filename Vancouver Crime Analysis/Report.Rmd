@@ -2,7 +2,7 @@
 title: "The Effect of DST on Crime in Vancouver"
 author: "Stephen Min"
 date: "2024-08-20"
-output: html_document
+output: pdf_document
 bibliography: references.bib
 ---
 
@@ -24,20 +24,29 @@ library(kableExtra)
 # Empirical Strategy
 
 Since DST is a sudden shift of the clock forward at a specific date each year, it would make sense to use regression discontinuity, with a running variable of the number of days before and after the start of DST.
+$$
+f = ma
+$$
 
 ```{r DataCleaning, include=FALSE}
 ```
 
 ```{r table}
-data_summary <- data_clean %>%
-  select(date, num_property_crime_perht, num_violent_crime_perht, avg_temperature, rain, days_from_dst, dst_dummy, day_of_week) %>%
+data_summary <- merged_data_clean %>%
+  select(date, num_property_crime_perht, num_violent_crime_perht, 
+         avg_temperature, rain, days_from_dst, dst_dummy, day_of_week) %>%
+  mutate(across(c("num_property_crime_perht", "num_violent_crime_perht"), round, 2)) %>%
   head(10)  # Show first 10 rows
 
-kable(data_summary, 
-      col.names = c("Date", "Property Crime per 100k", "Violent Crime per 100k", "Average Temperature", "Rain", "Days from DST", "DST Dummy", "Day of Week"),
-      align = c('l', 'c', 'c', 'c', 'c', 'c')) %>%
-    kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
-                full_width = FALSE)
+kable(data_summary, format = "latex",
+      col.names = (c("Date", "Property Crime per 100k", "Violent Crime per 100k",
+                    "Average Temperature", "Rain", "Days from DST", "DST Dummy",
+                    "Day of Week")),
+      align = c('l', 'c', 'c', 'c', 'c', 'c', 'c', 'c'),
+      booktabs = TRUE,
+      longtable = FALSE,
+      linesep = "") %>%
+    kable_styling(latex_options = c("striped", "hold_position", "scale_down"))
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

@@ -6,9 +6,9 @@ library(kableExtra)
 
 # ---- DataCleaning ----
 
-data_crime <- read.csv("Data/crimedata_csv_AllNeighbourhoods_AllYears.csv")
-data_pop <- read.csv("Data/VancouverPop.csv")
-data_weather <- read.csv("Data/weatherstats_vancouver_daily.csv")
+data_crime <- read.csv("Data/Raw/crimedata_csv_AllNeighbourhoods_AllYears.csv")
+data_pop <- read.csv("Data/Processed/VancouverPop.csv")
+data_weather <- read.csv("Data/Raw/weatherstats_vancouver_daily.csv")
 
 data_weather_relevant <- data_weather %>%
   select(date, avg_temperature, rain) %>%
@@ -50,7 +50,7 @@ merged_data_clean <- merged_data %>%
          dst_dummy = as.integer(days_from_dst >= 0),
          day_of_week = as.factor(wday(date))) %>%
   filter(days_from_dst >= -60 & days_from_dst <= 60) %>%
-  drop_na()
+  drop_na() # Some of the population data isn't available for 2024 yet.
 
 # ---- Plots ----
 
