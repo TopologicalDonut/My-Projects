@@ -68,6 +68,11 @@ The estimates of the effect of DST are close to zero, and as the p-values indica
 
 # Robustness Checks
 
-It's possible that the functional form of \eqref{eq:model} and the bandwidth choice of 60 days are biasing the results. To 
+It's possible that the functional form of \eqref{eq:model} and the bandwidth choice of 60 days are biasing the results. To examine whether the results are consistent, a cubic functional form will be tested with the original bandwidth, and a smaller bandwidth of 14 days will be used with the original model. 
+
+```{r Robustness Check, echo=FALSE}
+```
+
+None of the other models give significant results for the effect of DST on crime. The results of the original model appear to be fairly robust.
 
 # References

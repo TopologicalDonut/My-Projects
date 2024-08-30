@@ -159,5 +159,44 @@ kbl(coef_table,
     digits = 3,
     caption = "Effect of DST on Crime per 100k",
     booktabs = T) %>%
-  kable_styling(latex_options = "hold_position")
+  kable_styling(latex_options = "hold_position") %>%
+  add_header_above(c(" " = 1, "Statistics" = 4))
 
+# ---- Robustness Check ----
+
+model_property_cubic <- lm(num_property_crime_perht ~ poly(days_from_dst,3)*dst_dummy 
+                           + day_of_week + rain + avg_temperature, data = merged_data_clean)
+model_violent_cubic <- lm(num_violent_crime_perht ~ poly(days_from_dst,3)*dst_dummy 
+                           + day_of_week + rain + avg_temperature, data = merged_data_clean)
+model_property_altband <- run_model("num_property_crime_perht", 14)
+model_violent_altband <- run_model("num_violent_crime_perht", 14)
+
+extract_dst_coef <- function(model, model_name) {
+  tidy(model) %>% 
+    filter(term == "dst_dummy") %>% 
+    select(estimate, std.error, statistic, p.value) %>%
+    mutate(Model = model_name)
+}
+
+coef_table <- bind_rows(
+  extract_dst_coef(model_violent, "Violent - Default"),
+  extract_dst_coef(model_property, "Property - Default"),
+  extract_dst_coef(model_violent_cubic, "Violent - Cubic"),
+  extract_dst_coef(model_property_cubic, "Property - Cubic"),
+  extract_dst_coef(model_violent_altband, "Violent - 14 Day Bandwidth"),
+  extract_dst_coef(model_property_altband, "Property - 14 Day Bandwidth")
+  ) %>%
+  mutate(Crime_Type = ifelse(grepl("Violent", Model), "Violent", "Property"),
+         Model_Type = gsub("Violent - |Property - ", "", Model)) %>%
+  select(Model_Type, Crime_Type,everything(), -Model)
+
+# Create table using kable
+kbl(coef_table, 
+      col.names = c("Model", "Crime Type", "Estimate", "Std. Error", "t-statistic", "p-value"),
+      digits = 3,
+      caption = "Effect of DST Across Different Models",
+      booktabs = T,
+      linesep = "") %>%
+  kable_styling(latex_options = "hold_position") %>%
+  collapse_rows(1:2) %>%
+  add_header_above(c(" " = 2, "Statistics" = 4))
