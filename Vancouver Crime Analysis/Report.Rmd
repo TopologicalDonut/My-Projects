@@ -43,7 +43,7 @@ To deal with these two issues, the estimating equation incorporates average temp
 \begin{equation} \label{eq:model}
 crime = \alpha + \beta_1 day + \beta_2 DST + \beta_3 DST * day + \delta W + \gamma_{dow}
 \end{equation}
-$W$ refers to the weather variables -- average temperature and rainfall -- while $\gamma$ is the day-of-week fixed effect. An initial bandwidth of 60 days will be used for the RDD, but different bandwidths will be tested for robustness checks later on.
+$W$ refers to the weather variables – average temperature and rainfall – while $\gamma$ is the day-of-week fixed effect. An initial bandwidth of 60 days will be used for the RDD, but different bandwidths will be tested for robustness checks later on.
 
 # Data
 
