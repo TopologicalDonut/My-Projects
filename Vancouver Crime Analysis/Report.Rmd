@@ -3,6 +3,12 @@ title: "The Effect of DST on Crime in Vancouver"
 author: "Stephen Min"
 date: "April 2024"
 output: pdf_document
+urlcolor: blue
+abstract: "This report investigates the effect of Daylight Saving Time (DST) on crime rates in Vancouver using a regression discontinuity design. The results show no statistically significant impact of DST on either property or violent crime rates in Vancouver. Robustness checks were conducted to ensure the validity of the methodology."
+header-includes:
+  \usepackage{abstract}
+  \renewcommand{\abstractname}{Summary}
+  \setlength{\abstitleskip}{-20pt}
 fontsize: 12pt
 bibliography: references.bib
 ---
