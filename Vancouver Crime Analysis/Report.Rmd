@@ -21,6 +21,7 @@ library(ggplot2)
 library(patchwork)
 library(kableExtra)
 library(ggdag)
+library(broom)
 ```
 
 # Empirical Strategy
@@ -63,8 +64,10 @@ At first glance, DST doesn't appear to affect crime rates much. However, to conf
 ```{r Model Estimation, echo=FALSE}
 ```
 
-```{r Summaries of Models, echo=FALSE}
-summary(model_property)
-```
+The estimates of the effect of DST are close to zero, and as the p-values indicate, it appears that the null hypothesis that DST has no effect on crime cannot be rejected. In other words, DST seems to have no effect on crime in Vancouver.
+
+# Robustness Checks
+
+It's possible that the functional form of \eqref{eq:model} and the bandwidth choice of 60 days are biasing the results. To 
 
 # References

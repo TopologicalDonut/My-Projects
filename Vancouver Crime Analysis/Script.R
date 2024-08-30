@@ -3,6 +3,8 @@ library(lubridate)
 library(ggplot2)
 library(patchwork)
 library(kableExtra)
+library(ggdag)
+library(broom)
 
 # ---- Merge Data ----
 
@@ -82,7 +84,6 @@ ggdag_status(dag, node_size = 20) + theme_dag()
 data_summary <- merged_data_clean %>%
   select(date, num_property_crime_perht, num_violent_crime_perht, 
          avg_temperature, rain, days_from_dst, dst_dummy, day_of_week) %>%
-  mutate(across(c("num_property_crime_perht", "num_violent_crime_perht"), \(x) round(x,2))) %>%
   head(10)  # Show first 10 rows
 
 kbl(data_summary,
@@ -91,7 +92,9 @@ kbl(data_summary,
                    "Day of Week")),
     align = c('l', 'c', 'c', 'c', 'c', 'c', 'c', 'c'),
     booktabs = T,
-    linesep = "") %>%
+    linesep = "",
+    digits = 3,
+    caption = "First 10 Rows of Cleaned Data") %>%
   kable_styling(latex_options = c("striped", "hold_position", "scale_down"))
 
 # ---- Plots ----
@@ -111,7 +114,7 @@ property_crime_plot <- ggplot(avg_crime_by_day, aes(x = days_from_dst, avg_prope
   geom_smooth(data = filter(avg_crime_by_day, dst_dummy == 1), 
               aes(x = days_from_dst, y = avg_property_crime), se = FALSE, colour = "red") +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
-  labs(title = "Avg Property Crimes Around DST Start", x = "Days from DST Start", y = "Property Crimes per 100k") + 
+  labs(title = "Avg Property Crimes Around DST", x = "Days from DST Start", y = "Property Crimes per 100k") + 
   theme_minimal()
 
 violent_crime_plot <- ggplot(avg_crime_by_day, aes(x = days_from_dst, avg_violent_crime)) +
@@ -121,7 +124,7 @@ violent_crime_plot <- ggplot(avg_crime_by_day, aes(x = days_from_dst, avg_violen
   geom_smooth(data = filter(avg_crime_by_day, dst_dummy == 1), 
               aes(x = days_from_dst, y = avg_violent_crime), se = FALSE, colour = "red") +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
-  labs(title = "Avg Violent Crimes Around DST Start", x = "Days from DST Start", y = "Violent Crimes per 100k") + 
+  labs(title = "Avg Violent Crimes Around DST", x = "Days from DST Start", y = "Violent Crimes per 100k") + 
   theme_minimal()
 
 combined_plot <- property_crime_plot + violent_crime_plot
@@ -137,5 +140,24 @@ run_model <- function(outcome, bandwidth) {
 model_property <- run_model("num_property_crime_perht", 60)
 model_violent <- run_model("num_violent_crime_perht", 60)
 
+coef_property <- tidy(model_property) %>% 
+  filter(term == "dst_dummy") %>% 
+  select(estimate, std.error, statistic, p.value)
 
+coef_violent <- tidy(model_violent) %>% 
+  filter(term == "dst_dummy") %>% 
+  select(estimate, std.error, statistic, p.value)
+
+coef_table <- rbind(
+  data.frame(Crime = "Property", coef_property),
+  data.frame(Crime = "Violent", coef_violent)
+)
+
+kbl(coef_table, 
+    col.names = c("Crime Type", "Estimate", "Std. Error", "t-statistic", "p-value"),
+    align = c('l', 'c', 'c', 'c', 'c'),
+    digits = 3,
+    caption = "Effect of DST on Crime per 100k",
+    booktabs = T) %>%
+  kable_styling(latex_options = "hold_position")
 
