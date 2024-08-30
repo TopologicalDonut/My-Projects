@@ -4,7 +4,7 @@ library(ggplot2)
 library(patchwork)
 library(kableExtra)
 
-# ---- DataCleaning ----
+# ---- Merge Data ----
 
 data_crime <- read.csv("Data/Raw/crimedata_csv_AllNeighbourhoods_AllYears.csv")
 data_pop <- read.csv("Data/Processed/VancouverPop.csv")
@@ -20,6 +20,12 @@ data_crime_with_date <- data_crime %>%
 merged_data <- data_crime_with_date %>%
   left_join(data_pop, by = c("YEAR" = "Year")) %>%
   left_join(data_weather_relevant, by = "date")
+
+write_csv(merged_data, "Data/Processed/merged_data.csv")
+
+# ---- Data Cleaning ----
+
+merged_data <- read_csv("Data/Processed/merged_data.csv")
 
 get_dst_start <- function(date) {
   as.Date(sapply(date, function(date) {
@@ -48,9 +54,45 @@ merged_data_clean <- merged_data %>%
          dst_start_date = get_dst_start(date),
          days_from_dst = as.integer(date - dst_start_date),
          dst_dummy = as.integer(days_from_dst >= 0),
-         day_of_week = as.factor(wday(date))) %>%
+         day_of_week = as.factor(wday(date))) %>%  # Sunday is considered the first day with this function
   filter(days_from_dst >= -60 & days_from_dst <= 60) %>%
   drop_na() # Some of the population data isn't available for 2024 yet.
+
+write_csv(merged_data_clean, "Data/Processed/merged_data_clean.csv")
+
+# ---- DAG ----
+
+coord_dag <- list(
+  x = c(DST = 0, light = 2, crime = 4, day = 2, weather = 3 ),
+  y = c(DST = 0, light = 0, crime = 0, day = 0.5, weather = -0.5 )
+)
+
+dag <- dagify(
+  crime ~ light + weather + day, # Y = crime, X = light, W = DST, Z = rain, V = day of week
+  light ~ weather + DST,
+  DST ~ day,
+  exposure = "DST",
+  outcome = "crime",
+  coords = coord_dag
+)
+ggdag_status(dag, node_size = 20) + theme_dag()
+
+# ---- Table ----
+
+data_summary <- merged_data_clean %>%
+  select(date, num_property_crime_perht, num_violent_crime_perht, 
+         avg_temperature, rain, days_from_dst, dst_dummy, day_of_week) %>%
+  mutate(across(c("num_property_crime_perht", "num_violent_crime_perht"), \(x) round(x,2))) %>%
+  head(10)  # Show first 10 rows
+
+kbl(data_summary,
+    col.names = (c("Date", "Property Crime per 100k", "Violent Crime per 100k",
+                   "Average Temperature", "Rain", "Days from DST", "DST Dummy",
+                   "Day of Week")),
+    align = c('l', 'c', 'c', 'c', 'c', 'c', 'c', 'c'),
+    booktabs = T,
+    linesep = "") %>%
+  kable_styling(latex_options = c("striped", "hold_position", "scale_down"))
 
 # ---- Plots ----
 
@@ -69,7 +111,7 @@ property_crime_plot <- ggplot(avg_crime_by_day, aes(x = days_from_dst, avg_prope
   geom_smooth(data = filter(avg_crime_by_day, dst_dummy == 1), 
               aes(x = days_from_dst, y = avg_property_crime), se = FALSE, colour = "red") +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
-  labs(title = "Property Crimes Around DST Start", x = "Days from DST Start", y = "Average Number of Property Crimes") + 
+  labs(title = "Avg Property Crimes Around DST Start", x = "Days from DST Start", y = "Property Crimes per 100k") + 
   theme_minimal()
 
 violent_crime_plot <- ggplot(avg_crime_by_day, aes(x = days_from_dst, avg_violent_crime)) +
@@ -79,11 +121,13 @@ violent_crime_plot <- ggplot(avg_crime_by_day, aes(x = days_from_dst, avg_violen
   geom_smooth(data = filter(avg_crime_by_day, dst_dummy == 1), 
               aes(x = days_from_dst, y = avg_violent_crime), se = FALSE, colour = "red") +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
-  labs(title = "Violent Crimes Around DST Start", x = "Days from DST Start", y = "Average Number of Violent Crimes") + 
+  labs(title = "Avg Violent Crimes Around DST Start", x = "Days from DST Start", y = "Violent Crimes per 100k") + 
   theme_minimal()
 
 combined_plot <- property_crime_plot + violent_crime_plot
 print(combined_plot)
+
+# ---- Model Estimation ----
 
 run_model <- function(outcome, bandwidth) {
   formula <- as.formula(paste(outcome, "~ days_from_dst*dst_dummy + day_of_week + rain + avg_temperature"))
@@ -91,10 +135,7 @@ run_model <- function(outcome, bandwidth) {
 }
 
 model_property <- run_model("num_property_crime_perht", 60)
+model_violent <- run_model("num_violent_crime_perht", 60)
 
-model_property_cubic <- lm(
-  num_property_crime_perht ~ dst_dummy*(days_from_dst + I(days_from_dst^2) + I(days_from_dst^3)) 
-  + day_of_week + rain + avg_temperature, data = merged_data_clean)
 
-model_violent <- lm(num_violent_crime_perht ~ days_from_dst*dst_dummy + day_of_week, data=data_clean, subset = abs(days_from_dst) <= 21)
 

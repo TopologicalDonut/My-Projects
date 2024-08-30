@@ -1,16 +1,17 @@
 ---
 title: "The Effect of DST on Crime in Vancouver"
 author: "Stephen Min"
-date: "2024-08-20"
+date: "April 2024"
 output: pdf_document
+fontsize: 12pt
 bibliography: references.bib
 ---
 
 # Introduction
 
-This is an analysis inspired by @doleac2015. The premise is that Daylight Saving Time (DST) represents an exogenous increase in ambient light during a typical day, which might lead to a higher chance of criminals being caught, thus potentially lowering crime rates. However, as @doleac2015 point out, it's possible that DST causes people to spend more time outdoors, resulting in more potential victims for criminals. The effect of DST is thus unknown without empirical work.
+This is an analysis inspired by @doleac2015. The premise is that Daylight Saving Time (DST) represents an exogenous increase in ambient light during a typical day, which might lead to a higher chance of criminals being caught, thus potentially lowering crime rates. However, as @doleac2015 point out, it's possible that this higher level of ambient light causes people to spend more time outdoors, resulting in more potential victims for criminals. The effect of DST is thus unknown without empirical work.
 
-The original paper found that DST decreased crime rates in the United States, but we cannot easily generalize the results to cities in Canada. This motivates an application of the methodology of @doleac2015 to analyze the effect of DST on crime rates in Vancouver.
+The original paper found that DST decreased crime rates, particularly for robbery and rape, in the United States, but we cannot easily generalize the results to cities in Canada for a variety of reasons such as different baseline levels of ambient light, different infrastructure, different crime patterns, etc. This motivates an application of the methodology of @doleac2015 to analyze the effect of DST on crime rates in Vancouver.
 
 ```{r setup, include=FALSE}
 knitr::read_chunk("Script.R")
@@ -19,36 +20,51 @@ library(lubridate)
 library(ggplot2)
 library(patchwork)
 library(kableExtra)
+library(ggdag)
 ```
 
 # Empirical Strategy
 
-Since DST is a sudden shift of the clock forward at a specific date each year, it would make sense to use regression discontinuity, with a running variable of the number of days before and after the start of DST.
-$$
-f = ma
-$$
+Since DST is a sudden shift of the clock forward at a specific date each year, a viable strategy would be to use a regression discontinuity design (RDD) with the running variable being days from the start of DST. However, there are a couple of confounding variables that must be addressed.
 
-```{r DataCleaning, include=FALSE}
+First, since DST affects crime through the amount of ambient light in a day, weather patterns would have to be accounted for since they affect both the amount of light and the crime rate. Similarly, DST always falls on a Sunday, meaning that the day of the week is another confounding variable since crime patterns may be different on a Sunday compared to other days. The diagram below represents these two problems graphically.
+
+```{r DAG, echo=FALSE}
 ```
 
-```{r table}
-data_summary <- merged_data_clean %>%
-  select(date, num_property_crime_perht, num_violent_crime_perht, 
-         avg_temperature, rain, days_from_dst, dst_dummy, day_of_week) %>%
-  mutate(across(c("num_property_crime_perht", "num_violent_crime_perht"), round, 2)) %>%
-  head(10)  # Show first 10 rows
+To deal with these two issues, the estimating equation incorporates average temperature, rainfall levels, and day-of-week fixed effects:
+\begin{equation} \label{eq:model}
+crime = \alpha + \beta_1 day + \beta_2 DST + \beta_3 DST * day + \delta W + \gamma_{dow}
+\end{equation}
+$W$ refers to the weather variables -- average temperature and rainfall -- while $\gamma$ is the day-of-week fixed effect. An initial bandwidth of 60 days will be used for the RDD, but different bandwidths will be tested for robustness checks later on.
 
-kable(data_summary, format = "latex",
-      col.names = (c("Date", "Property Crime per 100k", "Violent Crime per 100k",
-                    "Average Temperature", "Rain", "Days from DST", "DST Dummy",
-                    "Day of Week")),
-      align = c('l', 'c', 'c', 'c', 'c', 'c', 'c', 'c'),
-      booktabs = TRUE,
-      longtable = FALSE,
-      linesep = "") %>%
-    kable_styling(latex_options = c("striped", "hold_position", "scale_down"))
+# Data
+
+```{r import data, include=FALSE}
+merged_data_clean <- read_csv("Data/Processed/merged_data_clean.csv")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Crime data comes from the Vancouver Police Department (VPD) website (https://geodash.vpd.ca/opendata/) while the weather data comes from the Vancouver Weatherstats website (https://vancouver.weatherstats.ca/). The table below shows the first 10 entries of the data set used for analysis, created by merging the raw crime and weather data, cleaning it, and creating relevant variables.
+
+```{r Table, echo=FALSE}
+```
+
+Note that the units for rainfall are mm, and Sunday is considered the first day of the week for the Day of Week column. The raw data was split into into various types of theft, homicide, and offenses against another person. Because of this low level of granularity, the crimes were aggregated into just property crimes and violent crimes.
+
+# Results
+
+Before presenting the results of the RDD estimation, a graph of the average crimes for each day will be shown as an initial heuristic to see if there's any obvious change in crime rates before and after the start of DST.
+
+```{r Plots, echo=FALSE, message=FALSE}
+```
+
+At first glance, DST doesn't appear to affect crime rates much. However, to confirm whether this initial assessment is accurate, a proper estimation using \eqref{eq:model} is necessary. The relevant results are displayed in the table below.
+
+```{r Model Estimation, echo=FALSE}
+```
+
+```{r Summaries of Models, echo=FALSE}
+summary(model_property)
+```
 
 # References
