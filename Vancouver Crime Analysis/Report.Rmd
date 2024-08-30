@@ -81,4 +81,6 @@ It's possible that the functional form of \eqref{eq:model} and the bandwidth cho
 
 None of the other models give significant results for the effect of DST on crime. The results of the original model appear to be fairly robust.
 
+\newpage 
+
 # References
