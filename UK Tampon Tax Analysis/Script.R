@@ -23,18 +23,13 @@ product_data_clean <- product_data %>%
 
 write_csv(product_data_clean, "ONS_data/Processed/merged_product_data_clean.csv")
 
-# ---- Data Cleaning ----
+# ---- Analysis Prep ----
 
-product_data <- read_csv("ONS_data/merged_product_data.csv") 
+product_data <- read_csv("ONS_data/Processed/merged_product_data_clean.csv") 
 
 create_item_data <- function(item_id) {
   product_data %>%
-    filter(ITEM_ID == item_id) %>%
-    mutate(INDEX_DATE = ym(INDEX_DATE)) %>%
-    mutate(tax_dummy = as.integer(INDEX_DATE >= as.Date("2021-01-01"))) %>%
-    mutate(Month = tsibble::yearmonth(INDEX_DATE)) %>%
-    select(INDEX_DATE, Month, ITEM_ID, ITEM_DESC, ALL_GM_INDEX, tax_dummy) %>%
-    as_tsibble(index = Month)
+    filter(ITEM_ID == item_id)
 }
 
 rebase_cpi <- function(data){
@@ -57,7 +52,8 @@ rebase_cpi <- function(data){
       cumulative_factor = if_else(month(INDEX_DATE) == 1, lag(cumulative_factor), cumulative_factor) %>%
         replace_na(1),
       rebased_index = ALL_GM_INDEX * cumulative_factor
-    )
+    ) %>%
+    select(-year, -jan_index, -cumulative_factor, -ALL_GM_INDEX)
   return(data_rebased_cpi)
 }
 
