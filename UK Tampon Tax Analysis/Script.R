@@ -1,6 +1,7 @@
 library(tidyverse)
 library(lubridate)
 library(ggplot2)
+library(tsibble)
 library(fable)
 library(feasts)
 library(tseries)
@@ -16,10 +17,7 @@ product_data <- data_list %>%
 
 product_data_clean <- product_data %>%
   select(INDEX_DATE, ITEM_ID, ITEM_DESC, ALL_GM_INDEX) %>%
-  mutate(INDEX_DATE = ym(INDEX_DATE)) %>%
-  mutate(tax_dummy = as.integer(INDEX_DATE >= as.Date("2021-01-01"))) %>%
-  mutate(Month = tsibble::yearmonth(INDEX_DATE)) %>%
-  as_tibble(index = Month)
+  mutate(INDEX_DATE = ym(INDEX_DATE))
 
 write_csv(product_data_clean, "ONS_data/Processed/merged_product_data_clean.csv")
 
@@ -29,7 +27,10 @@ product_data <- read_csv("ONS_data/Processed/merged_product_data_clean.csv")
 
 create_item_data <- function(item_id) {
   product_data %>%
-    filter(ITEM_ID == item_id)
+    filter(ITEM_ID == item_id) %>%
+    mutate(Month = tsibble::yearmonth(INDEX_DATE)) %>%
+    mutate(tax_dummy = as.integer(INDEX_DATE >= as.Date("2021-01-01"))) %>%
+    as_tsibble(index = Month)
 }
 
 rebase_cpi <- function(data){
@@ -57,15 +58,26 @@ rebase_cpi <- function(data){
   return(data_rebased_cpi)
 }
 
+# ---- Analysis ----
+
 tampon_data <- create_item_data(520206)
 tampon_data_rebased_cpi <- rebase_cpi(tampon_data)
 
 tampon_data_rebased_cpi %>% 
-  ACF(tampon_data_rebased_cpi$rebased_index, lag_max = 48) %>%
+  ACF(difference(log(rebased_index)), lag_max = 48) %>%
   autoplot()
 
-tampon_data_rebased_cpi %>%
-  gg_season(y = rebased_index)
+test <- tampon_data_rebased_cpi %>%
+  mutate(diff = difference(log(rebased_index)))
+
+autoplot(test, diff)
+
+ggplot(tampon_data_rebased_cpi, aes(x = Month, y = diff)) +
+  geom_line() +
+  ggtitle("Time Series of Differences") +
+  xlab("Date") +
+  ylab("Difference") +
+  theme_minimal()
 
 autoplot(tampon_data_rebased_cpi, rebased_index)+
   geom_vline(xintercept = as.Date("2021-01-01"), color = "red", linetype = "dashed")
