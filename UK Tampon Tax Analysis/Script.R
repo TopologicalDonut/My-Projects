@@ -5,20 +5,27 @@ library(fable)
 library(feasts)
 library(tseries)
 
-# ---- Merge Raw Data ----
+# ---- Merge and Clean Raw Data ----
 
-data_list <- list.files("ONS_data/raw_data", pattern = "*.csv", full.names = TRUE) %>%
-  setdiff("ONS_data/raw_data/CPI.csv")
+data_list <- list.files("ONS_data/Raw", pattern = "*.csv", full.names = TRUE) %>%
+  setdiff("ONS_data/Raw/CPI.csv")
 
 product_data <- data_list %>% 
   map_df(~read_csv(.x) %>% 
            rename_all(toupper))
 
-write_csv(product_data, "ONS_data/merged_product_data.csv")
+product_data_clean <- product_data %>%
+  select(INDEX_DATE, ITEM_ID, ITEM_DESC, ALL_GM_INDEX) %>%
+  mutate(INDEX_DATE = ym(INDEX_DATE)) %>%
+  mutate(tax_dummy = as.integer(INDEX_DATE >= as.Date("2021-01-01"))) %>%
+  mutate(Month = tsibble::yearmonth(INDEX_DATE)) %>%
+  as_tibble(index = Month)
+
+write_csv(product_data_clean, "ONS_data/Processed/merged_product_data_clean.csv")
 
 # ---- Data Cleaning ----
 
-product_data <- read_csv("ONS_data/merged_product_data.csv")
+product_data <- read_csv("ONS_data/merged_product_data.csv") 
 
 create_item_data <- function(item_id) {
   product_data %>%
