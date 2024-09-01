@@ -110,9 +110,9 @@ avg_crime_by_day <- merged_data_clean %>%
 property_crime_plot <- ggplot(avg_crime_by_day, aes(x = days_from_dst, avg_property_crime)) +
   geom_point(alpha = 0.5) +
   geom_smooth(data = filter(avg_crime_by_day, dst_dummy == 0), 
-              aes(x = days_from_dst, y = avg_property_crime), se = FALSE, colour = "blue") +
+              aes(x = days_from_dst, y = avg_property_crime), se = FALSE, colour = "blue", linewidth = 0.5) +
   geom_smooth(data = filter(avg_crime_by_day, dst_dummy == 1), 
-              aes(x = days_from_dst, y = avg_property_crime), se = FALSE, colour = "red") +
+              aes(x = days_from_dst, y = avg_property_crime), se = FALSE, colour = "red", linewidth = 0.5) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
   labs(title = "Avg Property Crimes Around DST", x = "Days from DST Start", y = "Property Crimes per 100k") + 
   theme_minimal()
@@ -120,9 +120,9 @@ property_crime_plot <- ggplot(avg_crime_by_day, aes(x = days_from_dst, avg_prope
 violent_crime_plot <- ggplot(avg_crime_by_day, aes(x = days_from_dst, avg_violent_crime)) +
   geom_point(alpha = 0.5) +
   geom_smooth(data = filter(avg_crime_by_day, dst_dummy == 0), 
-              aes(x = days_from_dst, y = avg_violent_crime), se = FALSE, colour = "blue") +
+              aes(x = days_from_dst, y = avg_violent_crime), se = FALSE, colour = "blue", linewidth = 0.5) +
   geom_smooth(data = filter(avg_crime_by_day, dst_dummy == 1), 
-              aes(x = days_from_dst, y = avg_violent_crime), se = FALSE, colour = "red") +
+              aes(x = days_from_dst, y = avg_violent_crime), se = FALSE, colour = "red", linewidth = 0.5) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
   labs(title = "Avg Violent Crimes Around DST", x = "Days from DST Start", y = "Violent Crimes per 100k") + 
   theme_minimal()
