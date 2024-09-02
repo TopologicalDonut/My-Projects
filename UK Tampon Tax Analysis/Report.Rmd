@@ -1,0 +1,41 @@
+---
+title: "Did the 2021 UK Tampon Tax Abolition Reduce Prices?"
+author: "Stephen Min"
+date: "August 2024"
+output: pdf_document
+urlcolor: blue
+abstract: "This report analyses the impact of the abolition of the 2021 UK tampon tax on prices. In particular, it is found that the elimination of the tax resulted in a roughly 4% decrease in the price of tampons, meaning that a majority of the savings was passed on to the consumers."
+header-includes:
+  \usepackage{abstract}
+  \renewcommand{\abstractname}{Summary}
+  \setlength{\abstitleskip}{-20pt}
+fontsize: 12pt
+bibliography: references.bib
+---
+
+# Introduction
+
+```{r setup, include=FALSE}
+knitr::read_chunk("Script.R")
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(tsibble)
+library(fable)
+library(feasts)
+library(tseries)
+```
+
+On January 1, 2021, the United Kingdom abolished the 5% VAT on women's sanitary products, commonly known as the "tampon tax." Economic theory generally suggests that tax cuts lead to price decreases, but the extent of this effect depends on various factors such as demand elasticity. In the case of the UK tampon tax abolition, there has been considerable debate regarding its actual impact on consumer prices.
+
+@neidle2022 is one prominent study that appeared to find that the tax removal did not result in a price decrease. However, the study suffers from significant methodological shortcomings:
+
+1.  It assumes independent data points for inference, an unrealistic assumption for time series price data.
+
+2.  It fails to account for the methodology used by the Office for National Statistics (ONS) in calculating consumer price indices (CPI).
+
+This report aims to address these methodological challenges and provide a more robust analysis of the tampon tax abolition's impact on consumer prices by employing an event study methodology utilizing time series techniques, incorporating the nuances of the ONS price index calculations, and conducting robustness checks.
+
+# Empirical Strategy
+
+As mentioned in the introduction, the strategy employed in this analysis is an event study using time series methods. The identifying assumption of this methodology is that there are no sudden shocks to price unaccounted for after including the abolition of the tampon tax and accounting for the effects of time.

@@ -28,15 +28,17 @@ product_data <- read_csv("ONS_data/Processed/merged_product_data_clean.csv")
 create_item_data <- function(item_id) {
   product_data %>%
     filter(ITEM_ID == item_id) %>%
-    mutate(Month = tsibble::yearmonth(INDEX_DATE)) %>%
-    mutate(tax_dummy = as.integer(INDEX_DATE >= as.Date("2021-01-01"))) %>%
+    mutate(Month = tsibble::yearmonth(INDEX_DATE),
+           tax_dummy = as.integer(INDEX_DATE >= as.Date("2021-01-01"))) %>%
+    select(-INDEX_DATE) %>%
     as_tsibble(index = Month)
+    
 }
 
 rebase_cpi <- function(data){
   january_indices <- data %>%
-    filter(month(INDEX_DATE) == 1) %>%
-    mutate(year = year(INDEX_DATE),
+    filter(month(Month) == 1) %>%
+    mutate(year = year(Month),
            jan_index = ALL_GM_INDEX) %>%
     as_tibble() %>%
     select(year, jan_index) %>%
@@ -45,17 +47,26 @@ rebase_cpi <- function(data){
     )
   
   data_rebased_cpi <- data %>%
-    mutate(year = year(INDEX_DATE)) %>%
+    mutate(year = year(Month)) %>%
     left_join(january_indices, by = "year") %>%
     mutate(
-      jan_index = if_else(month(INDEX_DATE) == 1, lag(jan_index), jan_index) %>%
-        replace_na(100),
-      cumulative_factor = if_else(month(INDEX_DATE) == 1, lag(cumulative_factor), cumulative_factor) %>%
+      cumulative_factor = if_else(month(Month) == 1, lag(cumulative_factor), cumulative_factor) %>%
         replace_na(1),
       rebased_index = ALL_GM_INDEX * cumulative_factor
     ) %>%
     select(-year, -jan_index, -cumulative_factor, -ALL_GM_INDEX)
   return(data_rebased_cpi)
+}
+
+rebase_cpi <- function(data) {
+  data %>%
+    arrange(Month) %>%
+    mutate(
+      year = year(Month),
+      is_january = month(Month) == 1,
+      jan_index = if_else(is_january, ALL_GM_INDEX, NA_real_)
+    ) %>%
+    group_by(year)
 }
 
 # ---- Analysis ----
