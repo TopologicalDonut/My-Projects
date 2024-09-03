@@ -5,6 +5,8 @@ library(tsibble)
 library(fable)
 library(feasts)
 library(tseries)
+library(gridExtra)
+library(kableExtra)
 
 # ---- Merge and Clean Raw Data ----
 
@@ -21,9 +23,26 @@ product_data_clean <- product_data %>%
 
 write_csv(product_data_clean, "ONS_data/Processed/merged_product_data_clean.csv")
 
-# ---- Analysis Prep ----
+# ---- Table ----
 
-product_data <- read_csv("ONS_data/Processed/merged_product_data_clean.csv") 
+product_data <- read_csv("ONS_data/Processed/merged_product_data_clean.csv")
+
+example_data <- product_data %>%
+  filter(ITEM_ID == 610310) %>%
+  filter(month(INDEX_DATE) %in% c(12, 1, 2, 3) & year(INDEX_DATE) < 2010) %>%
+  slice(3:10)
+
+kbl(example_data,
+    col.names = (c("Index Date", "Item ID", "Item",
+                   "Price Index")),
+    align = c('l', 'c', 'c', 'c'),
+    booktabs = T,
+    linesep = "",
+    digits = 2,
+    caption = "First 10 Rows of Cleaned Data") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+# ---- Analysis Prep ----
 
 create_item_data <- function(item_id) {
   product_data %>%
@@ -32,7 +51,6 @@ create_item_data <- function(item_id) {
            tax_dummy = as.integer(INDEX_DATE >= as.Date("2021-01-01"))) %>%
     select(-INDEX_DATE) %>%
     as_tsibble(index = Month)
-    
 }
 
 rebase_cpi <- function(data){
@@ -52,21 +70,53 @@ rebase_cpi <- function(data){
     mutate(
       cumulative_factor = if_else(month(Month) == 1, lag(cumulative_factor), cumulative_factor) %>%
         replace_na(1),
-      rebased_index = ALL_GM_INDEX * cumulative_factor
+      rebased_index = ALL_GM_INDEX * cumulative_factor,
+      log_rebased_index = log(rebased_index)
     ) %>%
-    select(-year, -jan_index, -cumulative_factor, -ALL_GM_INDEX)
+    select(-year, -ALL_GM_INDEX, -jan_index, -cumulative_factor)
   return(data_rebased_cpi)
 }
 
-rebase_cpi <- function(data) {
-  data %>%
-    arrange(Month) %>%
-    mutate(
-      year = year(Month),
-      is_january = month(Month) == 1,
-      jan_index = if_else(is_january, ALL_GM_INDEX, NA_real_)
-    ) %>%
-    group_by(year)
+analyze_item <- function(item_id) {
+  item_data <- create_item_data(item_id)
+  item_name <- item_data$ITEM_DESC[1]
+  item_data_rebased <- rebase_cpi(item_data)
+  
+  arima_model <- item_data_rebased %>%
+    model(ARIMA(log_rebased_index ~ tax_dummy, stepwise = FALSE))
+  
+  acf_plot <- augment(arima_model) %>%
+    ACF(.resid, lag_max = 24) %>%
+    autoplot() +
+    ggtitle(paste("ACF of Residuals for", item_name))
+  
+  resid_vs_fitted <- ggplot(augment(arima_model), aes(x = .fitted, y = .resid)) +
+    geom_point(alpha = 0.5) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    geom_smooth(method = "loess", se = FALSE, color = "blue") +
+    labs(title = paste("Residuals vs Fitted for", item_name),
+         x = "Fitted Values",
+         y = "Residuals")
+  
+  tax_dummy_pvalue <- tidy(arima_model) %>%
+    filter(term == "tax_dummy") %>%
+    pull(p.value)
+  
+  tax_dummy_effect <- tidy(arima_model) %>%
+    filter(term == "tax_dummy") %>%
+    pull(estimate)
+  
+  # Return results
+  list(
+    item_id = item_id,
+    item_name = item_name,
+    data = item_data_rebased,
+    model = arima_model,
+    acf_plot =acf_plot,
+    resid_vs_fitted = resid_vs_fitted,
+    tax_dummy_effect = tax_dummy_effect,
+    tax_dummy_pvalue = tax_dummy_pvalue
+  )
 }
 
 # ---- Analysis ----
@@ -75,28 +125,49 @@ tampon_data <- create_item_data(520206)
 tampon_data_rebased_cpi <- rebase_cpi(tampon_data)
 
 tampon_data_rebased_cpi %>% 
-  ACF(difference(log(rebased_index)), lag_max = 48) %>%
+  ACF(log_rebased_index, lag_max = 48) %>%
   autoplot()
 
-test <- tampon_data_rebased_cpi %>%
-  mutate(diff = difference(log(rebased_index)))
-
-autoplot(test, diff)
-
-ggplot(tampon_data_rebased_cpi, aes(x = Month, y = diff)) +
-  geom_line() +
-  ggtitle("Time Series of Differences") +
-  xlab("Date") +
-  ylab("Difference") +
-  theme_minimal()
-
-autoplot(tampon_data_rebased_cpi, rebased_index)+
+autoplot(tampon_data_rebased_cpi, log_rebased_index) +
   geom_vline(xintercept = as.Date("2021-01-01"), color = "red", linetype = "dashed")
 
-test <- tampon_data_rebased_cpi %>%
-  model(ARIMA(log(rebased_index) ~ tax_dummy, stepwise = FALSE)) %>%
-  report()
-
-test %>% gg_tsresiduals()
+testplots <- test$model %>% gg_tsresiduals()
 
 tidy(test)
+
+# Extract residuals and fitted values
+testplotadd <- 
+  ggplot(augment(test$model),aes(x = .fitted, y = .resid)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(title = paste("Residuals vs Fitted Values"),
+       x = "Fitted Values",
+       y = "Residuals")
+
+item_ids <- c(520213, 430536, 520249, 520241)
+
+results <- lapply(item_ids, analyze_item)
+
+# Access results
+results[[1]]$model %>% report()  # Report for first item
+results[[1]]$ts_plot  # Time series plot for first item
+results[[1]]$residual_plots  # Residual plots for first item
+results[[1]]$bp_test  # BP test results for first item
+
+summary_table <- do.call(rbind, lapply(results, function(x) {
+  tibble(
+    item_id = x$item_id,
+    item_name = x$item_name,
+    tax_dummy_coef = x$
+    tax_dummy_pvalue = x$tax_dummy_pvalue
+  )
+}))
+
+print(summary_table)
+
+residual_plots_list <- lapply(results, function(x) x$residual_plots)
+
+residual_plots <- flatten(lapply(residual_plots_list, function(x) x[1:2]))
+
+# Arrange these plots
+do.call(grid.arrange, c(residual_plots, ncol = 4))

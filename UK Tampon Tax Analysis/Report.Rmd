@@ -38,4 +38,28 @@ This report aims to address these methodological challenges and provide a more r
 
 # Empirical Strategy
 
-As mentioned in the introduction, the strategy employed in this analysis is an event study using time series methods. The identifying assumption of this methodology is that there are no sudden shocks to price unaccounted for after including the abolition of the tampon tax and accounting for the effects of time.
+As mentioned in the introduction, the strategy employed in this analysis is an event study using time series methods. The model equation is
+
+$$
+y_t = \beta_0 + \beta_1 T + \eta_t
+$$
+
+where $y_t$ is the natural log of the individual price index for tampons, $T$ is a dummy equal to 1 after the abolition of the tampon tax, and $\eta_t$ is an ARIMA error.
+
+The identifying assumption of this approach is that, after accounting for the tampon tax abolition and incorporating time effects through ARIMA errors, there are no other significant, sudden shocks to prices. To validate this assumption, the same empirical strategy will be applied to several related goods, serving as a robustness check for the results.
+
+# Data 
+
+Data for this analysis comes from the ONS website https://www.ons.gov.uk/economy. 
+
+A crucial aspect of the ONS data that needs to be dealt with is the way the ONS calculates individual price indices. Effectively, every year individual price indices are rebased using last January's price index. The effect of this procedure can be seen in the section of the data below.
+
+```{r Analysis Prep, include = FALSE}
+```
+
+```{r}
+product_data %>%
+  filter(ITEM_ID == 610310) %>%
+  filter(INDEX_DATE <= as.Date("2009-02-01")) %>%
+  print()
+```
