@@ -1,3 +1,7 @@
+###############################################################################
+## The original code is from https://gitlab.com/cbenard/vimp-causal-forests. ##
+## A slight modification was made to track progress of the function.         ##
+###############################################################################
 
 ### vimp function
 #' Variable importance for causal forests
