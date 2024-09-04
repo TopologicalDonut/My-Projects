@@ -56,7 +56,7 @@ Crime data comes from the Vancouver Police Department (VPD) website (<https://ge
 ```{r Table, echo=FALSE}
 ```
 
-Note that the units for rainfall are mm, and Sunday is considered the first day of the week for the Day of Week column. The raw data was split into into various types of theft, homicide, and offenses against another person. Because of this low level of granularity, the crimes were aggregated into just property crimes and violent crimes.
+Note that the units for rainfall are mm, and Sunday is considered the first day of the week for the Day of Week column. The raw data was split into various types of theft, homicide, and offenses against another person. Because of this low level of granularity, the crimes were aggregated into just property crimes and violent crimes.
 
 # Results
 
