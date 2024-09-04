@@ -3,3 +3,5 @@
 .RData
 .Ruserdata
 *.Rproj
+Report_cache
+Report_files
