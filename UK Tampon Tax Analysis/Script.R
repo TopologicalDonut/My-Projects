@@ -5,7 +5,7 @@ library(tsibble)
 library(fable)
 library(feasts)
 library(tseries)
-library(gridExtra)
+library(patchwork)
 library(kableExtra)
 
 # ---- Merge and Clean Raw Data ----
@@ -93,7 +93,6 @@ analyze_item <- function(item_id) {
   resid_vs_fitted <- ggplot(augment(arima_model), aes(x = .fitted, y = .resid)) +
     geom_point(alpha = 0.5) +
     geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
-    geom_smooth(method = "loess", se = FALSE, color = "blue") +
     labs(title = paste("Residuals vs Fitted for", item_name),
          x = "Fitted Values",
          y = "Residuals")
@@ -136,8 +135,13 @@ kbl(tampon_analysis$estimates_info,
     caption = "Estimate of Effect of Tampon Tax Abolition") %>%
   kable_styling(latex_options = c("striped", "hold_position"))
 
-# ----
+# ---- Tampon Resid Graphs ----
 
+tampon_resid_and_ACF <- tampon_analysis$resid_vs_fitted / tampon_analysis$acf_plot +
+  plot_layout(heights = c(1,1))
+print(tampon_resid_and_ACF)
+
+# ----
 
 autoplot(tampon_data_rebased_cpi, log_rebased_index) +
   geom_vline(xintercept = as.Date("2021-01-01"), color = "red", linetype = "dashed")
