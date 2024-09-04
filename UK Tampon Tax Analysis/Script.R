@@ -119,14 +119,16 @@ analyze_item <- function(item_id) {
   )
 }
 
-# ---- Analysis ----
+# ---- ACF Plot ----
 
-tampon_data <- create_item_data(520206)
-tampon_data_rebased_cpi <- rebase_cpi(tampon_data)
+tampon_data <- create_item_data(520206) %>%
+  rebase_cpi()
 
-tampon_data_rebased_cpi %>% 
+tampon_data %>% 
   ACF(log_rebased_index, lag_max = 48) %>%
   autoplot()
+
+# ---- Analysis ----
 
 autoplot(tampon_data_rebased_cpi, log_rebased_index) +
   geom_vline(xintercept = as.Date("2021-01-01"), color = "red", linetype = "dashed")
