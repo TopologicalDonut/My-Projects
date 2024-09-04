@@ -54,12 +54,7 @@ Data for this analysis comes from the ONS website https://www.ons.gov.uk/economy
 
 A crucial aspect of the ONS data that needs to be dealt with is the way the ONS calculates individual price indices. Effectively, every year individual price indices are rebased using last January's price index. The effect of this procedure can be seen in the section of the data below.
 
-```{r Analysis Prep, include = FALSE}
+```{r Table, echo=FALSE}
 ```
 
-```{r}
-product_data %>%
-  filter(ITEM_ID == 610310) %>%
-  filter(INDEX_DATE <= as.Date("2009-02-01")) %>%
-  print()
-```
+Notice that the price index has significant jumps when transitioning from January to February. To account for this, the price indices for tampons will be rebased to 2005 for this analysis. The other products to be analyzed will be rebased to the earliest year available in their respective datasets.
