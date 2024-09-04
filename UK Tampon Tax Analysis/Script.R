@@ -23,7 +23,7 @@ product_data_clean <- product_data %>%
 
 write_csv(product_data_clean, "ONS_data/Processed/merged_product_data_clean.csv")
 
-# ---- Table ----
+# ---- Table for Rebase Example ----
 
 product_data <- read_csv("ONS_data/Processed/merged_product_data_clean.csv", show_col_types = FALSE)
 
@@ -152,7 +152,14 @@ autoplot(tampon_analysis$data, log_rebased_index) +
 
 item_ids <- c(520213, 430536, 520249, 520241)
 
-other_items_analysis <- lapply(item_ids, analyze_item)
+output_filename <- "Intermediate_outputs/other_items_analysis.rds"
+
+if (!file.exists(output_filename)){
+  other_items_analysis <- lapply(item_ids, analyze_item)
+  saveRDS(other_items_analysis, file = output_filename)
+} else {
+  other_items_analysis <- readRDS(output_filename)
+}
 
 # ---- Robustness Check Table ----
 
