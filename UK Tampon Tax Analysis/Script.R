@@ -155,14 +155,20 @@ item_ids <- c(520213, 430536, 520249, 520241)
 other_items_analysis <- lapply(item_ids, analyze_item)
 
 summary_table <- do.call(rbind, lapply(other_items_analysis, function(x) {
-  tibble(
-    item_id = x$item_id,
-    item_name = x$item_name,
-    estimates_info = x$estimates_info
-  )
-}))
+  tibble(item_name = x$item_name,
+         estimates_info = x$estimates_info)
+  })) %>%
+  unnest(cols = estimates_info)
 
-print(summary_table)
+kbl(summary_table,
+    col.names = c("Item", "Estimate", "Std. Error", "p-value"),
+    align = c('l', 'c', 'c', 'c'),
+    booktabs = T,
+    linesep = "",
+    digits = 4,
+    caption = "Estimates of Placebo Tax Abolition on Other Items") %>%
+  kable_styling(latex_options = c("hold_position")) %>%
+  add_header_above(c(" " = 1, "Statistics" = 3))
 
 # ---- Resid Plots for Other ----
 
