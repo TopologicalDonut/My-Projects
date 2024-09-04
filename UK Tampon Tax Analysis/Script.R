@@ -25,7 +25,7 @@ write_csv(product_data_clean, "ONS_data/Processed/merged_product_data_clean.csv"
 
 # ---- Table ----
 
-product_data <- read_csv("ONS_data/Processed/merged_product_data_clean.csv")
+product_data <- read_csv("ONS_data/Processed/merged_product_data_clean.csv", show_col_types = FALSE)
 
 example_data <- product_data %>%
   filter(ITEM_ID == 610310) %>%
@@ -98,13 +98,9 @@ analyze_item <- function(item_id) {
          x = "Fitted Values",
          y = "Residuals")
   
-  tax_dummy_pvalue <- tidy(arima_model) %>%
+  estimates_info <- tidy(arima_model) %>%
     filter(term == "tax_dummy") %>%
-    pull(p.value)
-  
-  tax_dummy_effect <- tidy(arima_model) %>%
-    filter(term == "tax_dummy") %>%
-    pull(estimate)
+    select(estimate, std.error, p.value)
   
   # Return results
   list(
@@ -114,8 +110,7 @@ analyze_item <- function(item_id) {
     model = arima_model,
     acf_plot =acf_plot,
     resid_vs_fitted = resid_vs_fitted,
-    tax_dummy_effect = tax_dummy_effect,
-    tax_dummy_pvalue = tax_dummy_pvalue
+    estimates_info = estimates_info
   )
 }
 
@@ -128,7 +123,21 @@ tampon_data %>%
   ACF(log_rebased_index, lag_max = 48) %>%
   autoplot()
 
-# ---- Analysis ----
+# ---- Tampon Analysis ----
+
+tampon_analysis <- analyze_item(520206)
+
+kbl(tampon_analysis$estimates_info,
+    col.names = c("Estimate", "Std. Error", "p-value"),
+    align = c('c', 'c', 'c'),
+    booktabs = T,
+    linesep = "",
+    digits = 4,
+    caption = "Estimate of Effect of Tampon Tax Abolition") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+# ----
+
 
 autoplot(tampon_data_rebased_cpi, log_rebased_index) +
   geom_vline(xintercept = as.Date("2021-01-01"), color = "red", linetype = "dashed")
