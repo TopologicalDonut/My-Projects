@@ -133,7 +133,7 @@ kbl(tampon_analysis$estimates_info,
     linesep = "",
     digits = 4,
     caption = "Estimate of Effect of Tampon Tax Abolition") %>%
-  kable_styling(latex_options = c("striped", "hold_position"))
+  kable_styling(latex_options = c("hold_position"))
 
 # ---- Tampon Resid Graphs ----
 
@@ -141,9 +141,9 @@ tampon_resid_and_ACF <- tampon_analysis$resid_vs_fitted / tampon_analysis$acf_pl
   plot_layout(heights = c(1,1))
 print(tampon_resid_and_ACF)
 
-# ---- Tampon price graph ---- 
+# ---- Tampon Price Graph ---- 
 
-autoplot(tampon_data_rebased_cpi, log_rebased_index) +
+autoplot(tampon_analysis$data, log_rebased_index) +
   geom_vline(xintercept = as.Date("2021-01-01"), color = "red", linetype = "dashed") +
   labs(title = "Plot of ln Price Index for Tampons",
        y = "ln of Rebased Index")
@@ -153,6 +153,8 @@ autoplot(tampon_data_rebased_cpi, log_rebased_index) +
 item_ids <- c(520213, 430536, 520249, 520241)
 
 other_items_analysis <- lapply(item_ids, analyze_item)
+
+# ---- Robustness Check Table ----
 
 summary_table <- do.call(rbind, lapply(other_items_analysis, function(x) {
   tibble(item_name = x$item_name,
@@ -172,17 +174,13 @@ kbl(summary_table,
 
 # ---- Resid Plots for Others ----
 
-residual_plots <- lapply(other_items_analysis, function(x) x$resid_vs_fitted)
-acf_plots <- lapply(other_items_analysis, function(x) x$acf_plot)
+residual_plots <- lapply(other_items_analysis, function(x) {
+  x$resid_vs_fitted})
 
-combined_residual_plots <- wrap_plots(residual_plots, ncol = 2)
-combined_acf_plots <- wrap_plots(acf_plots, ncol = 2)
+acf_plots <- lapply(other_items_analysis, function(x) {
+  x$acf_plot})
 
-all_plots <- combined_residual_plots / combined_acf_plots +
-  plot_annotation(
-    title = "Residual and ACF Plots for Other Items",
-    theme = theme(plot.title = element_text(hjust = 0.5),
-                  plot.subtitle = element_text(hjust = 0.5))
-  )
+combined_residual_plots <- wrap_plots(residual_plots)
+combined_acf_plots <- wrap_plots(acf_plots)
 
-print(all_plots)
+combined_residual_plots / combined_acf_plots
