@@ -4,7 +4,7 @@ author: "Stephen Min"
 date: "August 2024"
 output: pdf_document
 urlcolor: blue
-abstract: "This report analyses the impact of the abolition of the 2021 UK tampon tax on prices. In particular, it is found that the elimination of the tax resulted in a roughly 4% decrease in the price of tampons, meaning that a majority of the savings was passed on to the consumers."
+abstract: "This report analyzes the impact of the abolition of the 2021 UK tampon tax on prices. In particular, it is found that the elimination of the tax resulted in a roughly 4% decrease in the price of tampons, meaning that a majority of the savings was passed on to the consumers."
 header-includes:
   \usepackage{abstract}
   \renewcommand{\abstractname}{Summary}
@@ -58,7 +58,7 @@ Data for this analysis comes from the ONS website https://www.ons.gov.uk/economy
 
 A crucial aspect of the ONS data that needs to be dealt with is the way the ONS calculates individual price indices. Effectively, individual price indices are rebased using last January's price index every year. The effect of this procedure can be seen in the section of the data below.
 
-```{r Table, echo=FALSE}
+```{r Table for Rebase Example, echo=FALSE}
 ```
 
 Notice that the price index has significant jumps when transitioning from January to February. To account for this, the price indices for tampons will be rebased to 2005 for this analysis. The other products to be analyzed will be rebased to the earliest year available in their respective datasets.
@@ -87,18 +87,27 @@ As the dependent variable is the natural log of the price index, the coefficient
 
 For the most part, the ACF graph indicates that the model has accounted for most of the autocorrelation. The plot of residuals vs fitted also suggests that the errors are likely homoscedastic -- aside from a few outliers, the residuals do not appear to have a changing variance. The standard errors can be trusted as a result.
 
+A plot of the price index over time is also displayed below. A noticeable jump can be seen at the time where the tampon tax was abolished.
+
+```{r Tampon Price Graph, echo=FALSE}
+```
+
 # Robustness Check
 
-Recall that the key assumption underlying the methodology of this analysis is that the observed price drop is attributable solely to the tax change after accounting for the impact of time. To test whether another event that suddenly influences prices may have occurred at the same time as the abolition of the tampon tax, the same methodology used for tampons is applied to several related goods — tissues, toilet rolls, baby wipes, and razor cartridges^[@neidle2022 look at a total of 13 other goods. For brevity, only four are analyzed in this report.]. 
+Recall that the key assumption underlying the methodology of this analysis is that the observed price drop is attributable solely to the tax change after accounting for the impact of time. To test whether another event that suddenly influences prices may have occurred at the same time as the abolition of the tampon tax, the same methodology used for tampons is applied to several related goods — tissues, toilet rolls, baby wipes, and razor cartridges^[@neidle2022 looked at a total of 13 other goods. For brevity, only four are analyzed in this report.]. 
 
 The results are reported in the table below.
 
-```{r Robustness Check, echo=FALSE, cache=TRUE}
+```{r Robustness Check, echo=FALSE}
 ```
 
-None of the other goods appear to have had a significant change in price at the time of the tax abolition. The estimated coefficients are also quite close to 0. To ensure that the estimated models are appropriate, residual graphs and ACFs are also shown.
+```{r Robustness Check Table, echo=FALSE}
+```
 
-```{r Resid Plots for Others, echo=FALSE}
+None of the other goods appear to have had a significant change in price at the time of the tax abolition. To ensure that the estimated models are appropriate, residual graphs and ACFs are also shown.
+
+```{r, echo=FALSE}
+knitr::include_graphics("Figures/Residual_Plots.pdf")
 ```
 
 A few outliers are present in the residual plots, but the plots do not seem to suggest heteroskedasticity. The ACF plots also suggest that the ARIMA errors have adequately incorporated the autocorrelation of prices. The reported p-values can be trusted, thus providing more evidence that the tax abolition is the primary factor for the sudden drop in tampon prices. 
