@@ -5,3 +5,5 @@
 *.Rproj
 Report_cache
 Report_files
+Paper
+.DS_Store
