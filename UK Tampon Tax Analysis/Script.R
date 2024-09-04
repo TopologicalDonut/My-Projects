@@ -39,8 +39,8 @@ kbl(example_data,
     booktabs = T,
     linesep = "",
     digits = 2,
-    caption = "First 10 Rows of Cleaned Data") %>%
-  kable_styling(latex_options = c("striped", "hold_position"))
+    caption = "Example of ONS Rebasing") %>%
+  kable_styling(latex_options = c("hold_position"))
 
 # ---- Analysis Prep ----
 
@@ -107,7 +107,7 @@ analyze_item <- function(item_id) {
     item_name = item_name,
     data = item_data_rebased,
     model = arima_model,
-    acf_plot =acf_plot,
+    acf_plot = acf_plot,
     resid_vs_fitted = resid_vs_fitted,
     estimates_info = estimates_info
   )
@@ -141,48 +141,42 @@ tampon_resid_and_ACF <- tampon_analysis$resid_vs_fitted / tampon_analysis$acf_pl
   plot_layout(heights = c(1,1))
 print(tampon_resid_and_ACF)
 
-# ----
+# ---- Tampon price graph ---- 
 
 autoplot(tampon_data_rebased_cpi, log_rebased_index) +
-  geom_vline(xintercept = as.Date("2021-01-01"), color = "red", linetype = "dashed")
+  geom_vline(xintercept = as.Date("2021-01-01"), color = "red", linetype = "dashed") +
+  labs(title = "Plot of ln Price Index for Tampons",
+       y = "ln of Rebased Index")
 
-testplots <- test$model %>% gg_tsresiduals()
-
-tidy(test)
-
-# Extract residuals and fitted values
-testplotadd <- 
-  ggplot(augment(test$model),aes(x = .fitted, y = .resid)) +
-  geom_point(alpha = 0.5) +
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
-  labs(title = paste("Residuals vs Fitted Values"),
-       x = "Fitted Values",
-       y = "Residuals")
+# ---- Robustness Check ----
 
 item_ids <- c(520213, 430536, 520249, 520241)
 
-results <- lapply(item_ids, analyze_item)
+other_items_analysis <- lapply(item_ids, analyze_item)
 
-# Access results
-results[[1]]$model %>% report()  # Report for first item
-results[[1]]$ts_plot  # Time series plot for first item
-results[[1]]$residual_plots  # Residual plots for first item
-results[[1]]$bp_test  # BP test results for first item
-
-summary_table <- do.call(rbind, lapply(results, function(x) {
+summary_table <- do.call(rbind, lapply(other_items_analysis, function(x) {
   tibble(
     item_id = x$item_id,
     item_name = x$item_name,
-    tax_dummy_coef = x$
-    tax_dummy_pvalue = x$tax_dummy_pvalue
+    estimates_info = x$estimates_info
   )
 }))
 
 print(summary_table)
 
-residual_plots_list <- lapply(results, function(x) x$residual_plots)
+# ---- Resid Plots for Other ----
 
-residual_plots <- flatten(lapply(residual_plots_list, function(x) x[1:2]))
+residual_plots <- lapply(other_items_analysis, function(x) x$resid_vs_fitted)
+acf_plots <- lapply(other_items_analysis, function(x) x$acf_plot)
 
-# Arrange these plots
-do.call(grid.arrange, c(residual_plots, ncol = 4))
+combined_residual_plots <- wrap_plots(residual_plots, ncol = 2)
+combined_acf_plots <- wrap_plots(acf_plots, ncol = 2)
+
+all_plots <- combined_residual_plots / combined_acf_plots +
+  plot_annotation(
+    title = "Residual and ACF Plots for Other Items",
+    theme = theme(plot.title = element_text(hjust = 0.5),
+                  plot.subtitle = element_text(hjust = 0.5))
+  )
+
+print(all_plots)
