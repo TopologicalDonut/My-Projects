@@ -170,7 +170,7 @@ kbl(summary_table,
   kable_styling(latex_options = c("hold_position")) %>%
   add_header_above(c(" " = 1, "Statistics" = 3))
 
-# ---- Resid Plots for Other ----
+# ---- Resid Plots for Others ----
 
 residual_plots <- lapply(other_items_analysis, function(x) x$resid_vs_fitted)
 acf_plots <- lapply(other_items_analysis, function(x) x$acf_plot)
