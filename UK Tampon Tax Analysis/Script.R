@@ -10,8 +10,8 @@ library(kableExtra)
 
 # ---- Merge and Clean Raw Data ----
 
-data_list <- list.files("ONS_data/Raw", pattern = "*.csv", full.names = TRUE) %>%
-  setdiff("ONS_data/Raw/CPI.csv")
+data_list <- list.files("Data/Raw", pattern = "*.csv", full.names = TRUE) %>%
+  setdiff("Data/Raw/CPI.csv")
 
 product_data <- data_list %>% 
   map_df(~read_csv(.x) %>% 
@@ -21,11 +21,11 @@ product_data_clean <- product_data %>%
   select(INDEX_DATE, ITEM_ID, ITEM_DESC, ALL_GM_INDEX) %>%
   mutate(INDEX_DATE = ym(INDEX_DATE))
 
-write_csv(product_data_clean, "ONS_data/Processed/merged_product_data_clean.csv")
+write_csv(product_data_clean, "Data/Processed/merged_product_data_clean.csv")
 
 # ---- Table for Rebase Example ----
 
-product_data <- read_csv("ONS_data/Processed/merged_product_data_clean.csv", show_col_types = FALSE)
+product_data <- read_csv("Data/Processed/merged_product_data_clean.csv", show_col_types = FALSE)
 
 example_data <- product_data %>%
   filter(ITEM_ID == 610310) %>%
@@ -42,7 +42,7 @@ kbl(example_data,
     caption = "Example of ONS Rebasing") %>%
   kable_styling(latex_options = c("hold_position"))
 
-# ---- Analysis Prep ----
+# ---- Analysis ----
 
 create_item_data <- function(item_id) {
   product_data %>%
@@ -85,18 +85,12 @@ analyze_item <- function(item_id) {
   arima_model <- item_data_rebased %>%
     model(ARIMA(log_rebased_index ~ tax_dummy, stepwise = FALSE))
   
-  acf_plot <- augment(arima_model) %>%
-    ACF(.resid, lag_max = 24) %>%
-    autoplot() +
-    ggtitle(paste("ACF of Residuals for", item_name))
+  resid_plot <- gg_tsresiduals(arima_model)[[1]] + 
+    ggtitle(paste("Residuals for", item_name))
   
-  resid_vs_fitted <- ggplot(augment(arima_model), aes(x = .fitted, y = .resid)) +
-    geom_point(alpha = 0.5) +
-    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
-    labs(title = paste("Residuals vs Fitted for", item_name),
-         x = "Fitted Values",
-         y = "Residuals")
-  
+  acf_plot <- gg_tsresiduals(arima_model)[[2]] + 
+    ggtitle(paste("ACF Plot for", item_name))
+
   estimates_info <- tidy(arima_model) %>%
     filter(term == "tax_dummy") %>%
     select(estimate, std.error, p.value)
@@ -107,11 +101,13 @@ analyze_item <- function(item_id) {
     item_name = item_name,
     data = item_data_rebased,
     model = arima_model,
+    resid_plot = resid_plot,
     acf_plot = acf_plot,
-    resid_vs_fitted = resid_vs_fitted,
     estimates_info = estimates_info
   )
 }
+
+tampon_analysis <- analyze_item(520206)
 
 # ---- ACF Plot ----
 
@@ -122,9 +118,7 @@ tampon_data %>%
   ACF(log_rebased_index, lag_max = 48) %>%
   autoplot()
 
-# ---- Tampon Analysis ----
-
-tampon_analysis <- analyze_item(520206)
+# ---- Tampon Analysis Table----
 
 kbl(tampon_analysis$estimates_info,
     col.names = c("Estimate", "Std. Error", "p-value"),
@@ -137,7 +131,7 @@ kbl(tampon_analysis$estimates_info,
 
 # ---- Tampon Resid Graphs ----
 
-tampon_resid_and_ACF <- tampon_analysis$resid_vs_fitted / tampon_analysis$acf_plot +
+tampon_resid_and_ACF <- tampon_analysis$resid_plot / tampon_analysis$acf_plot +
   plot_layout(heights = c(1,1))
 print(tampon_resid_and_ACF)
 
@@ -182,12 +176,13 @@ kbl(summary_table,
 # ---- Resid Plots for Others ----
 
 residual_plots <- lapply(other_items_analysis, function(x) {
-  x$resid_vs_fitted})
+  x$resid_plot})
 
 acf_plots <- lapply(other_items_analysis, function(x) {
   x$acf_plot})
 
-combined_residual_plots <- wrap_plots(residual_plots)
-combined_acf_plots <- wrap_plots(acf_plots)
+combined_residual_plots <- wrap_plots(residual_plots, nrow = 4)
+combined_acf_plots <- wrap_plots(acf_plots, nrow = 4)
 
-combined_residual_plots / combined_acf_plots
+ggsave("Figures/residual_plots.png", plot = combined_residual_plots, width = 10, height = 12)
+ggsave("Figures/acf_plots.png", plot = combined_acf_plots, width = 10, height = 12)
