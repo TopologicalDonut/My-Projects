@@ -57,7 +57,6 @@ summary_rw_lm <- function(model, indices=NULL, cov.type="HC2", num.boot=10000, s
 # Data Cleaning -----------------------------------------------------------
 
 library(tidyverse)
-library(dplyr)
 
 data <- read.csv("data/oreopoulos-resume-study-replication-data-file.csv")
 
@@ -80,20 +79,16 @@ filtered_data <- data_clean %>%
 
 library(grf)
 library(rpart)
-library(glmnet)
-library(xtable)
 library(lmtest)
 library(sandwich)
 library(ggplot2)
 
 set.seed(1)
-# List of covariates
+
+# accredition, reference, and legal need to be excluded from covariates since 
+# none of the natives have these.
 covariates <- c("ma", "female", "ba_quality", "exp_highquality", "language_skills",
                 "extracurricular_skills", "same_exp")
-
-# accredition, reference, and legal need to be excluded here since none of the 
-# natives have these.
-
 treatment <- "english_dummy"
 outcome <- "callback"
 
@@ -115,12 +110,9 @@ folds <- sample(rep(1:num.folds, length.out = n))
 
 forest <- causal_forest(X, Y, W, W.hat = 0.5, clusters = folds, num.trees = 4000, tune.parameters = "all")
 
-# Retrieve out-of-bag predictions.
-# Predictions for observation in fold k will be computed using
-# trees that were not trained using observations for that fold.
 tau.hat <- predict(forest)$predictions
 
-# Rank observations *within each fold* into quintiles according to their CATE predictions.
+# Rank observations *within each fold* into quantiles according to their CATE predictions.
 ranking <- rep(NA, n)
 for (fold in seq(num.folds)) {
   tau.hat.quantiles <- quantile(tau.hat[folds == fold], probs = seq(0, 1, by=1/num.rankings))
@@ -129,14 +121,12 @@ for (fold in seq(num.folds)) {
 
 # Basic Predictions -------------------------------------------------------
 
-# Calculate ATE and its CI
 ate_result <- average_treatment_effect(forest, target.sample = "all")
 ate <- ate_result[1]
 ate_se <- ate_result[2]
 ci_lower <- ate - 1.96 * ate_se
 ci_upper <- ate + 1.96 * ate_se
 
-# Create the plot
 ggplot(data.frame(tau_hat = tau.hat), aes(x = tau_hat)) +
   geom_histogram(binwidth = (max(tau.hat) - min(tau.hat)) / 30, 
                  fill = "lightblue", color = "white") +
@@ -158,54 +148,9 @@ variable_importance(forest)
 library(broom)
 library(kableExtra)
 
-# Function to add stars based on p-value
-add_significance_stars <- function(p.value) {
-  stars <- case_when(
-    p.value < 0.001 ~ "***",
-    p.value < 0.01 ~ "**",
-    p.value < 0.05 ~ "*",
-    p.value < 0.1 ~ ".",
-    TRUE ~ ""
-  )
-  return(stars)
-}
-
-format_math <- function(x) {
-  ifelse(is.na(x), "", sprintf("$%.3f$", x))
-}
-
 blp_results <- best_linear_projection(forest, X)
-
-# Convert the results to a tidy data frame
 blp_table <- tidy(blp_results)
-
-# Format numbers and add stars
-blp_table <- blp_table %>%
-  mutate(
-    estimate_formatted = format_math(estimate),
-    stars = sapply(p.value, add_significance_stars),
-    estimate_with_stars = paste0(estimate_formatted, stars),
-    across(c(std.error, statistic, p.value), format_math)
-  )
-
-# Create a LaTeX table
-latex_table <- blp_table %>%
-  select(term, estimate_with_stars, std.error, statistic, p.value) %>%
-  kable(format = "latex", 
-        booktabs = TRUE,
-        col.names = c("Term", "Estimate", "Std. Error", "T-Statistic", "P-value"),
-        caption = "Best Linear Projection Results",
-        escape = FALSE)
-
-# Add a note about significance levels
-latex_table <- latex_table %>%
-  footnote(c("Significance levels: *** $ p < 0.001 $, ** $ p < 0.01 $, * $ p < 0.05 $, . $ p < 0.1 $"), 
-           escape = FALSE,
-           threeparttable = TRUE)
-
-# Print the LaTeX code
-print(latex_table)
-
+blp_table
 
 # Quantiles and Heatmap ---------------------------------------------------
 
@@ -249,26 +194,20 @@ df <- mapply(function(covariate) {
   ols <- lm(fmla, data=transform(filtered_data, ranking=factor(ranking)))
   ols.res <- coeftest(ols, vcov=vcovHC(ols, "HC2"))
   
-  # Retrieve results
   avg <- ols.res[,1]
   stderr <- ols.res[,2]
   
-  # Tally up results
   data.frame(covariate, avg, stderr, ranking=paste0("Q", seq(num.rankings)),
-             # Used for coloring
              scaling=pnorm((avg - mean(avg))/sd(avg)),
              # We will order based on how much variation is 'explain' by the averages
              # relative to the total variation of the covariate in the data
              variation=sd(avg) / sd(filtered_data[,covariate]),
-             # String to print in each cell in heatmap below
              labels=paste0(signif(avg, 3), "\n", "(", signif(stderr, 3), ")"))
 }, covariates, SIMPLIFY = FALSE)
 df <- do.call(rbind, df)
 
-# First, make sure covariate is a factor and get its levels in the order of variation
 df$covariate <- factor(df$covariate, levels = unique(df$covariate[order(df$variation, decreasing = TRUE)]))
 
-# Plot heatmap
 ggplot(df) +
   aes(ranking, covariate) +
   geom_tile(aes(fill = scaling)) + 
@@ -291,7 +230,6 @@ ggplot(df) +
 
 subgroups <- c("extracurricular_skills", "female", "ba_quality")
 
-# Modify the compute_ate function to include confidence intervals
 compute_ate <- function(group, aipw_scores, data) {
   group_data <- split(aipw_scores, data[[group]])
   means <- sapply(group_data, mean)
@@ -312,14 +250,12 @@ compute_ate <- function(group, aipw_scores, data) {
   )
 }
 
-# Compute ATEs for all subgroups
 ate_results <- lapply(subgroups, function(group) {
   result <- compute_ate(group, aipw.scores, filtered_data)
   result$Subgroup <- group
   result
 })
 
-# Function to compute difference in ATEs
 compute_diff <- function(ate_result) {
   diff <- ate_result$ATE[2] - ate_result$ATE[1]
   se_diff <- sqrt(sum(ate_result$SE^2))
@@ -343,27 +279,22 @@ overview <- data.frame(
   RW_Adjusted_p = rw_pvalues
 )
 
-# Combine all ATE results into a single data frame
 all_results <- do.call(rbind, ate_results)
 
-# Create a named vector for renaming
 subgroup_names <- c(
   "extracurricular_skills" = "Extracurricular Skills Listed",
   "female" = "Female",
   "ba_quality" = "Top 200 University"
 )
 
-# Modify the factor levels in all_results
 all_results$Subgroup <- factor(all_results$Subgroup, 
                                levels = names(subgroup_names), 
                                labels = subgroup_names)
 
-# Also modify the overview dataframe
 overview$Subgroup <- factor(overview$Subgroup, 
                             levels = names(subgroup_names), 
                             labels = subgroup_names)
 
-# Now create your ggplot
 p <- ggplot(all_results, aes(x = Group, y = ATE, color = Subgroup)) +
   geom_point(position = position_dodge(width = 0.5), size = 3) +
   geom_errorbar(aes(ymin = CI_lower, ymax = CI_upper), 
